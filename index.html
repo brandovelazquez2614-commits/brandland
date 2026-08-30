@@ -18,22 +18,27 @@ body {
     background: linear-gradient(135deg, #07111f, #102a43);
     color: white;
     display: flex;
-    justify-content: center;f   align-items: center;
+    justify-content: center;
+    align-items: center;
     padding: 20px;
 }
 
 .panel {
     width: 100%;
-    max-width: 500px;
-    background: rgba(10, 18, 30, 0.95);
+    max-width: 560px;
+    background: rgba(10, 18, 30, 0.97);
     border: 1px solid #29445f;
-    border-radius: 20px;
+    border-radius: 22px;
     padding: 30px;
-    text-align: center;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 50px rgba(0,0,0,0.45);
 }
 
-h1 {
+.header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.header h1 {
     font-size: 42px;
     letter-spacing: 4px;
     margin-bottom: 8px;
@@ -41,14 +46,15 @@ h1 {
 
 .subtitle {
     color: #9fb3c8;
-    margin-bottom: 30px;
+    font-size: 17px;
 }
 
 .status {
     background: #101f2e;
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 18px;
-    margin-bottom: 20px;
+    text-align: center;
+    margin-bottom: 18px;
 }
 
 .dot {
@@ -60,43 +66,110 @@ h1 {
     margin-right: 8px;
 }
 
-button {
+.main-button {
     width: 100%;
-    padding: 16px;
+    padding: 17px;
     border: none;
-    border-radius: 12px;
+    border-radius: 13px;
     background: #27c93f;
     color: white;
     font-size: 18px;
     font-weight: bold;
     cursor: pointer;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
+    transition: 0.2s;
 }
 
-button:hover {
+.main-button:hover {
     background: #20ad35;
+    transform: translateY(-1px);
 }
 
-.info {
-    text-align: left;
+.main-button:disabled {
+    opacity: 0.7;
+    cursor: wait;
+    transform: none;
+}
+
+.info-box {
     background: #0b1724;
-    border-radius: 12px;
-    padding: 18px;
-    line-height: 1.8;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+}
+
+.info-box h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+}
+
+.row {
+    margin-bottom: 14px;
 }
 
 .label {
     color: #8fa8bf;
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
 }
 
-.value {
+.address-row {
+    display: flex;
+    gap: 8px;
+}
+
+.address {
+    flex: 1;
+    background: #101f2e;
+    border: 1px solid #29445f;
+    border-radius: 9px;
+    padding: 11px;
+    font-weight: bold;
+    overflow-wrap: anywhere;
+}
+
+.copy-button {
+    border: none;
+    border-radius: 9px;
+    padding: 0 14px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
     font-weight: bold;
 }
 
+.copy-button:hover {
+    background: #1d4ed8;
+}
+
+.players {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.instructions {
+    line-height: 1.7;
+    color: #d7e2ed;
+}
+
+.instructions strong {
+    color: white;
+}
+
 footer {
-    margin-top: 25px;
+    text-align: center;
+    margin-top: 24px;
     color: #657b91;
     font-size: 13px;
+}
+
+.message {
+    text-align: center;
+    min-height: 20px;
+    color: #7ee787;
+    font-size: 14px;
+    margin-top: 8px;
 }
 </style>
 </head>
@@ -105,37 +178,90 @@ footer {
 
 <div class="panel">
 
-    <h1>🎮 BRANDLAND</h1>
-    <p class="subtitle">Servidor oficial</p>
+    <div class="header">
+        <h1>🎮 BRANDLAND</h1>
+        <p class="subtitle">Servidor oficial</p>
+    </div>
 
     <div class="status">
         <span class="dot"></span>
-        <strong>Servidor apagado</strong>
+        <strong id="estado">Servidor apagado</strong>
     </div>
 
-   <button id="activarBtn" onclick="activarServidor()">
-    🚀 ACTIVAR SERVIDOR
-</button>
-    <div class="info">
-        <div>
-            <span class="label">Servidor:</span>
-            <span class="value">brandland</span>
+    <button id="activarBtn" class="main-button" onclick="activarServidor()">
+        🚀 ACTIVAR SERVIDOR
+    </button>
+
+    <div class="info-box">
+        <h2>🌐 Información del servidor</h2>
+
+        <div class="row">
+            <span class="label">Servidor</span>
+            <div class="address-row">
+                <div class="address">brandland</div>
+            </div>
         </div>
 
-        <div>
-            <span class="label">Bedrock:</span>
-            <span class="value">bedrock.minehut.com</span>
-        </div>
-
-        <div>
-            <span class="label">Puerto:</span>
-            <span class="value">19132</span>
-        </div>
-
-        <div>
-            <span class="value" id="jugadores">0 / 10</span>
+        <div class="row">
+            <span class="label">👥 Jugadores</span>
+            <div class="players" id="jugadores">0 / 10</div>
         </div>
     </div>
+
+    <div class="info-box">
+        <h2>☕ Java Edition</h2>
+
+        <div class="row">
+            <span class="label">Dirección</span>
+            <div class="address-row">
+                <div class="address">brandland.minehut.gg</div>
+                <button class="copy-button"
+                        onclick="copiar('brandland.minehut.gg')">
+                    Copiar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <h2>📱 Bedrock Edition</h2>
+
+        <div class="row">
+            <span class="label">Dirección directa</span>
+            <div class="address-row">
+                <div class="address">brandland.bedrock.minehut.gg</div>
+                <button class="copy-button"
+                        onclick="copiar('brandland.bedrock.minehut.gg')">
+                    Copiar
+                </button>
+            </div>
+        </div>
+
+        <div class="row">
+            <span class="label">Alternativa</span>
+            <div class="instructions">
+                Servidor: <strong>bedrock.minehut.com</strong><br>
+                Puerto: <strong>19132</strong><br>
+                Después usa: <strong>/join brandland</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <h2>📖 Cómo entrar</h2>
+
+        <div class="instructions">
+            <strong>Java:</strong> agrega
+            <strong>brandland.minehut.gg</strong>
+            a la lista de servidores.<br><br>
+
+            <strong>Bedrock:</strong> usa
+            <strong>brandland.bedrock.minehut.gg</strong>
+            como dirección del servidor.
+        </div>
+    </div>
+
+    <div id="mensaje" class="message"></div>
 
     <footer>
         BRANDLAND • Minecraft Server
@@ -144,10 +270,11 @@ footer {
 </div>
 
 <script>
+
 function activarServidor() {
     const boton = document.getElementById("activarBtn");
-    const estado = document.querySelector(".status strong");
-    const punto = document.querySelector(".status .dot");
+    const estado = document.getElementById("estado");
+    const punto = document.querySelector(".dot");
 
     boton.disabled = true;
     boton.innerHTML = "⏳ ABRIENDO MINEHUT...";
@@ -155,13 +282,33 @@ function activarServidor() {
     estado.innerHTML = "Servidor iniciando...";
     punto.style.background = "#ffd000";
 
-    window.open("https://minehut.com/", "_blank");
+    window.open(
+        "https://dashboard.minehut.com/",
+        "_blank"
+    );
 
     setTimeout(() => {
         boton.disabled = false;
         boton.innerHTML = "🚀 ACTIVAR SERVIDOR";
     }, 3000);
 }
+
+async function copiar(texto) {
+    try {
+        await navigator.clipboard.writeText(texto);
+
+        const mensaje = document.getElementById("mensaje");
+        mensaje.innerHTML = "✅ Dirección copiada: " + texto;
+
+        setTimeout(() => {
+            mensaje.innerHTML = "";
+        }, 2500);
+
+    } catch (error) {
+        alert("No se pudo copiar. Dirección: " + texto);
+    }
+}
+
 </script>
 
 </body>
