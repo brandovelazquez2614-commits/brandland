@@ -1,0 +1,9 @@
+{
+  "name": "brandland",
+  "version": "1.0.0",
+  "description": "Panel web de BRANDLAND",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
