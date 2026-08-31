@@ -84,27 +84,6 @@ async function obtenerEstadoMinehut() {
         online: !!servidor
     };
 }
-    const ahora = Date.now();
-
-    if (
-        statusCache &&
-        ahora - statusCacheTime < STATUS_CACHE_MS
-    ) {
-        return statusCache;
-    }
-
-    const respuesta = await fetch(
-        `${MCSTATUS_URL}?timeout=3`
-    );
-
-    const datos = await respuesta.json();
-
-    statusCache = datos;
-    statusCacheTime = ahora;
-
-    return datos;
-}
-
 const server = http.createServer(async (req, res) => {
 
     // -------------------------------
