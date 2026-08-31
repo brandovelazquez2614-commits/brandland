@@ -44,7 +44,46 @@ const attempts = new Map();
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 60 * 1000;
 
-async function obtenerEstadoBedrock() {
+async function obtenerEstadoMinehut() {
+    const respuesta = await fetch(
+        "https://api.minehut.com/servers",
+        {
+            headers: {
+                "Accept": "application/json"
+            }
+        }
+    );
+
+    if (!respuesta.ok) {
+        throw new Error(
+            `Minehut respondió ${respuesta.status}`
+        );
+    }
+
+    const datos = await respuesta.json();
+
+    const lista = Array.isArray(datos)
+        ? datos
+        : (
+            datos.servers ||
+            datos.data ||
+            []
+        );
+
+    const servidor = lista.find(item => {
+        const nombre =
+            item?.name ||
+            item?.server_name ||
+            item?.serverName ||
+            "";
+
+        return String(nombre).toLowerCase() === "brandland";
+    });
+
+    return {
+        online: !!servidor
+    };
+}
     const ahora = Date.now();
 
     if (
@@ -76,15 +115,11 @@ const server = http.createServer(async (req, res) => {
         req.method === "GET"
     ) {
         try {
-            const datos = await obtenerEstadoBedrock();
+           const datos = await obtenerEstadoMinehut();
 
-            return sendJson(res, 200, {
-                online: datos.online === true,
-                players: {
-                    online: datos.players?.online ?? 0,
-                    max: datos.players?.max ?? 10
-                }
-            });
+           return sendJson(res, 200, {
+    online: datos.online
+});
 
         } catch (error) {
             console.error(
