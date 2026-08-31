@@ -8,14 +8,6 @@ const HOST = "0.0.0.0";
 
 const ADMIN_PASSWORD = process.env.BRANDLAND_ADMIN_PASSWORD;
 
-const BEDROCK_SERVER = "brandland.bedrock.minehut.gg";
-const MCSTATUS_URL =
-    `https://api.mcstatus.io/v2/status/bedrock/${BEDROCK_SERVER}`;
-
-let statusCache = null;
-let statusCacheTime = 0;
-const STATUS_CACHE_MS = 15000;
-
 function sendJson(res, status, data) {
     res.writeHead(status, {
         "Content-Type": "application/json; charset=utf-8",
@@ -44,85 +36,9 @@ const attempts = new Map();
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 60 * 1000;
 
-async function obtenerEstadoMinehut() {
-    const respuesta = await fetch(
-        "https://api.minehut.com/servers",
-        {
-            headers: {
-                "Accept": "application/json"
-            }
-        }
-    );
+const server = http.createServer((req, res) => {
 
-    if (!respuesta.ok) {
-        throw new Error(
-            `Minehut respondió ${respuesta.status}`
-        );
-    }
-
-    const datos = await respuesta.json();
-
-    const lista = Array.isArray(datos)
-        ? datos
-        : (
-            datos.servers ||
-            datos.data ||
-            []
-        );
-
-    const servidor = lista.find(item => {
-        const nombre =
-            item?.name ||
-            item?.server_name ||
-            item?.serverName ||
-            "";
-
-        return String(nombre).toLowerCase() === "brandland";
-    });
-
-    return {
-        online: !!servidor
-    };
-}
-const server = http.createServer(async (req, res) => {
-
-    // -------------------------------
-    // ESTADO Y JUGADORES
-    // -------------------------------
-    if (
-        req.url === "/api/status" &&
-        req.method === "GET"
-    ) {
-        try {
-           const datos = await obtenerEstadoMinehut();
-
-           return sendJson(res, 200, {
-    online: datos.online
-});
-
-        } catch (error) {
-            console.error(
-                "Error consultando estado:",
-                error.message
-            );
-
-            return sendJson(res, 200, {
-                online: false,
-                players: {
-                    online: 0,
-                    max: 10
-                }
-            });
-        }
-    }
-
-    // -------------------------------
-    // ADMINISTRACIÓN
-    // -------------------------------
-    if (
-        req.url === "/api/admin" &&
-        req.method === "POST"
-    ) {
+    if (req.url === "/api/admin" && req.method === "POST") {
         let body = "";
 
         req.on("data", chunk => {
@@ -143,10 +59,7 @@ const server = http.createServer(async (req, res) => {
                 const now = Date.now();
                 const record = attempts.get(ip);
 
-                if (
-                    !record ||
-                    now - record.time > WINDOW_MS
-                ) {
+                if (!record || now - record.time > WINDOW_MS) {
                     attempts.set(ip, {
                         time: now,
                         count: 0
@@ -158,8 +71,7 @@ const server = http.createServer(async (req, res) => {
                 if (current.count >= MAX_ATTEMPTS) {
                     return sendJson(res, 429, {
                         ok: false,
-                        error:
-                            "Demasiados intentos. Espera un minuto."
+                        error: "Demasiados intentos. Espera un minuto."
                     });
                 }
 
@@ -187,9 +99,7 @@ const server = http.createServer(async (req, res) => {
 
                 return sendJson(res, 200, {
                     ok: true,
-                    message: "Acceso autorizado.",
-                    dashboard:
-                        "https://dashboard.minehut.com/"
+                    dashboard: "https://dashboard.minehut.com/"
                 });
 
             } catch (error) {
@@ -205,9 +115,6 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // -------------------------------
-    // ARCHIVOS DE LA PÁGINA
-    // -------------------------------
     let requestedPath =
         req.url === "/"
             ? "index.html"
@@ -226,30 +133,25 @@ const server = http.createServer(async (req, res) => {
     fs.readFile(filePath, (err, data) => {
         if (err) {
             res.writeHead(404, {
-                "Content-Type":
-                    "text/plain; charset=utf-8"
+                "Content-Type": "text/plain; charset=utf-8"
             });
 
             res.end("Página no encontrada");
             return;
         }
 
-        const ext =
-            path.extname(filePath).toLowerCase();
+        const ext = path.extname(filePath).toLowerCase();
 
         const contentTypes = {
             ".html": "text/html; charset=utf-8",
             ".css": "text/css; charset=utf-8",
-            ".js":
-                "application/javascript; charset=utf-8",
-            ".json":
-                "application/json; charset=utf-8"
+            ".js": "application/javascript; charset=utf-8",
+            ".json": "application/json; charset=utf-8"
         };
 
         res.writeHead(200, {
             "Content-Type":
-                contentTypes[ext] ||
-                "application/octet-stream"
+                contentTypes[ext] || "application/octet-stream"
         });
 
         res.end(data);
