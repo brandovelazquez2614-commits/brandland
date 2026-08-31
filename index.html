@@ -423,7 +423,43 @@ async function copiar(texto) {
 
     }
 }
+async function actualizarEstado() {
+    const estado = document.getElementById("estado");
+    const punto = document.querySelector(".dot");
+    const jugadores = document.getElementById("jugadores");
 
+    try {
+        const respuesta = await fetch("/api/status", {
+            cache: "no-store"
+        });
+
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok || !datos.online) {
+            estado.innerHTML = "Servidor apagado";
+            punto.style.background = "#ff3b30";
+            jugadores.innerHTML = "0 / 10";
+            return;
+        }
+
+        estado.innerHTML = "Servidor online";
+        punto.style.background = "#27c93f";
+
+        const online = datos.players?.online ?? 0;
+        const max = datos.players?.max ?? 10;
+
+        jugadores.innerHTML = `${online} / ${max}`;
+
+    } catch (error) {
+        estado.innerHTML = "Estado no disponible";
+        punto.style.background = "#ffd000";
+    }
+}
+
+actualizarEstado();
+
+// Actualizar cada 30 segundos
+setInterval(actualizarEstado, 30000);
 </script>
 
 </body>
