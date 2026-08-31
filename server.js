@@ -1,158 +1,123 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";
 
-const SERVER_NAME = "brandland";
-const MINEHUT_API = "https://api.minehut.com";
+const ADMIN_PASSWORD = process.env.BRANDLAND_ADMIN_PASSWORD;
 
-// Evita que alguien pulse el botón cientos de veces.
-const cooldown = new Map();
-const COOLDOWN_MS = 30000;
-
-function json(res, status, data) {
+function sendJson(res, status, data) {
     res.writeHead(status, {
         "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "no-store",
-        "Access-Control-Allow-Origin": "*"
+        "Cache-Control": "no-store"
     });
 
     res.end(JSON.stringify(data));
 }
 
-async function minehutRequest(url, options = {}) {
-    const response = await fetch(url, options);
-    const text = await response.text();
-
-    let data = text;
-
-    try {
-        data = text ? JSON.parse(text) : {};
-    } catch {
-        // La respuesta no era JSON.
+function passwordMatches(input) {
+    if (!ADMIN_PASSWORD || typeof input !== "string") {
+        return false;
     }
 
-    if (!response.ok) {
-        throw new Error(
-            `Minehut respondió ${response.status}: ${
-                typeof data === "string" ? data : JSON.stringify(data)
-            }`
-        );
+    const a = Buffer.from(input);
+    const b = Buffer.from(ADMIN_PASSWORD);
+
+    if (a.length !== b.length) {
+        return false;
     }
 
-    return data;
+    return crypto.timingSafeEqual(a, b);
 }
 
-async function getServer() {
-    return minehutRequest(
-        `${MINEHUT_API}/server/${encodeURIComponent(SERVER_NAME)}?byName=true`
-    );
-}
-
-function getServerId(serverData) {
-    return (
-        process.env.MINEHUT_SERVER_ID ||
-        serverData?._id ||
-        serverData?.id ||
-        serverData?.server?._id ||
-        serverData?.server?.id
-    );
-}
-
-async function startServer(serverId) {
-    const token = process.env.MINEHUT_AUTH_TOKEN;
-    const sessionId = process.env.MINEHUT_SESSION_ID;
-
-    if (!token || !sessionId) {
-        throw new Error(
-            "Faltan MINEHUT_AUTH_TOKEN y MINEHUT_SESSION_ID en Render."
-        );
-    }
-
-    return minehutRequest(
-        `${MINEHUT_API}/server/${serverId}/start_service`,
-        {
-            method: "POST",
-            headers: {
-                "authorization": token,
-                "x-session-id": sessionId
-            }
-        }
-    );
-}
+const attempts = new Map();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 60 * 1000;
 
 const server = http.createServer(async (req, res) => {
 
-    // Estado
-    if (req.url === "/api/status" && req.method === "GET") {
-        try {
-            const data = await getServer();
+    // Acceso de administración
+    if (req.url === "/api/admin" && req.method === "POST") {
+        let body = "";
 
-            return json(res, 200, {
-                ok: true,
-                server: data
-            });
-        } catch (error) {
-            console.error(error);
+        req.on("data", chunk => {
+            body += chunk.toString();
 
-            return json(res, 500, {
-                ok: false,
-                error: error.message
-            });
-        }
-    }
-
-    // Arrancar servidor
-    if (req.url === "/api/start" && req.method === "POST") {
-        const clientIp =
-            req.headers["x-forwarded-for"] ||
-            req.socket.remoteAddress ||
-            "unknown";
-
-        const lastRequest = cooldown.get(clientIp);
-        const now = Date.now();
-
-        if (lastRequest && now - lastRequest < COOLDOWN_MS) {
-            const seconds = Math.ceil(
-                (COOLDOWN_MS - (now - lastRequest)) / 1000
-            );
-
-            return json(res, 429, {
-                ok: false,
-                error: `Espera ${seconds} segundos antes de volver a intentarlo.`
-            });
-        }
-
-        cooldown.set(clientIp, now);
-
-        try {
-            const serverData = await getServer();
-            const serverId = getServerId(serverData);
-
-            if (!serverId) {
-                throw new Error("No se pudo obtener el ID de brandland.");
+            if (body.length > 5000) {
+                req.destroy();
             }
+        });
 
-            const result = await startServer(serverId);
+        req.on("end", () => {
+            try {
+                const ip =
+                    req.headers["x-forwarded-for"] ||
+                    req.socket.remoteAddress ||
+                    "unknown";
 
-            return json(res, 200, {
-                ok: true,
-                message: "Solicitud de inicio enviada.",
-                result
-            });
-        } catch (error) {
-            console.error(error);
+                const now = Date.now();
+                const record = attempts.get(ip);
 
-            return json(res, 500, {
-                ok: false,
-                error: error.message
-            });
-        }
+                if (!record || now - record.time > WINDOW_MS) {
+                    attempts.set(ip, {
+                        time: now,
+                        count: 0
+                    });
+                }
+
+                const current = attempts.get(ip);
+
+                if (current.count >= MAX_ATTEMPTS) {
+                    return sendJson(res, 429, {
+                        ok: false,
+                        error: "Demasiados intentos. Espera un minuto."
+                    });
+                }
+
+                current.count++;
+
+                let data;
+
+                try {
+                    data = JSON.parse(body);
+                } catch {
+                    return sendJson(res, 400, {
+                        ok: false,
+                        error: "Solicitud inválida."
+                    });
+                }
+
+                if (!passwordMatches(data.password)) {
+                    return sendJson(res, 401, {
+                        ok: false,
+                        error: "Contraseña incorrecta."
+                    });
+                }
+
+                attempts.delete(ip);
+
+                return sendJson(res, 200, {
+                    ok: true,
+                    message: "Acceso autorizado.",
+                    dashboard: "https://dashboard.minehut.com/"
+                });
+
+            } catch (error) {
+                console.error(error);
+
+                return sendJson(res, 500, {
+                    ok: false,
+                    error: "Error interno del servidor."
+                });
+            }
+        });
+
+        return;
     }
 
-    // Archivos de la página
+    // Servir la página
     let requestedPath =
         req.url === "/"
             ? "index.html"
@@ -198,6 +163,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
     console.log(
-        `BRANDLAND funcionando en http://${HOST}:${PORT}`
+        `BRANDLAND funcionando en http://0.0.0.0:${PORT}`
     );
 });
