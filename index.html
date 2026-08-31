@@ -71,24 +71,16 @@ body {
     padding: 17px;
     border: none;
     border-radius: 13px;
-    background: #27c93f;
+    background: #2563eb;
     color: white;
     font-size: 18px;
     font-weight: bold;
     cursor: pointer;
     margin-bottom: 22px;
-    transition: 0.2s;
 }
 
 .main-button:hover {
-    background: #20ad35;
-    transform: translateY(-1px);
-}
-
-.main-button:disabled {
-    opacity: 0.7;
-    cursor: wait;
-    transform: none;
+    background: #1d4ed8;
 }
 
 .info-box {
@@ -139,10 +131,6 @@ body {
     font-weight: bold;
 }
 
-.copy-button:hover {
-    background: #1d4ed8;
-}
-
 .players {
     font-size: 22px;
     font-weight: bold;
@@ -153,8 +141,12 @@ body {
     color: #d7e2ed;
 }
 
-.instructions strong {
-    color: white;
+.message {
+    text-align: center;
+    min-height: 24px;
+    color: #7ee787;
+    font-size: 14px;
+    margin-top: 8px;
 }
 
 footer {
@@ -164,12 +156,62 @@ footer {
     font-size: 13px;
 }
 
-.message {
-    text-align: center;
-    min-height: 20px;
-    color: #7ee787;
-    font-size: 14px;
-    margin-top: 8px;
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal-box {
+    width: 100%;
+    max-width: 400px;
+    background: #0b1724;
+    border: 1px solid #29445f;
+    border-radius: 18px;
+    padding: 25px;
+}
+
+.modal-box h2 {
+    margin-bottom: 18px;
+}
+
+.password-input {
+    width: 100%;
+    padding: 13px;
+    border-radius: 9px;
+    border: 1px solid #29445f;
+    background: #101f2e;
+    color: white;
+    margin-bottom: 12px;
+    font-size: 16px;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.modal-buttons button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.enter-button {
+    background: #27c93f;
+    color: white;
+}
+
+.cancel-button {
+    background: #374151;
+    color: white;
 }
 </style>
 </head>
@@ -188,8 +230,8 @@ footer {
         <strong id="estado">Servidor apagado</strong>
     </div>
 
-    <button id="activarBtn" class="main-button" onclick="activarServidor()">
-        🚀 ACTIVAR SERVIDOR
+    <button class="main-button" onclick="abrirAdmin()">
+        🔐 ADMINISTRACIÓN
     </button>
 
     <div class="info-box">
@@ -197,9 +239,7 @@ footer {
 
         <div class="row">
             <span class="label">Servidor</span>
-            <div class="address-row">
-                <div class="address">brandland</div>
-            </div>
+            <div class="address">brandland</div>
         </div>
 
         <div class="row">
@@ -251,13 +291,11 @@ footer {
         <h2>📖 Cómo entrar</h2>
 
         <div class="instructions">
-            <strong>Java:</strong> agrega
-            <strong>brandland.minehut.gg</strong>
-            a la lista de servidores.<br><br>
+            <strong>Java:</strong> usa
+            <strong>brandland.minehut.gg</strong>.<br><br>
 
             <strong>Bedrock:</strong> usa
-            <strong>brandland.bedrock.minehut.gg</strong>
-            como dirección del servidor.
+            <strong>brandland.bedrock.minehut.gg</strong>.
         </div>
     </div>
 
@@ -269,43 +307,120 @@ footer {
 
 </div>
 
+<div class="modal" id="adminModal">
+    <div class="modal-box">
+        <h2>🔐 Acceso de administración</h2>
+
+        <input
+            id="password"
+            class="password-input"
+            type="password"
+            placeholder="Contraseña"
+            autocomplete="current-password"
+        >
+
+        <div class="modal-buttons">
+            <button class="cancel-button" onclick="cerrarAdmin()">
+                Cancelar
+            </button>
+
+            <button class="enter-button" onclick="verificarAdmin()">
+                Entrar
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 
-function activarServidor() {
-    const boton = document.getElementById("activarBtn");
-    const estado = document.getElementById("estado");
-    const punto = document.querySelector(".dot");
+function abrirAdmin() {
+    document.getElementById("adminModal").style.display = "flex";
+    document.getElementById("password").focus();
+}
 
-    boton.disabled = true;
-    boton.innerHTML = "⏳ ABRIENDO MINEHUT...";
+function cerrarAdmin() {
+    document.getElementById("adminModal").style.display = "none";
+    document.getElementById("password").value = "";
+}
 
-    estado.innerHTML = "Servidor iniciando...";
-    punto.style.background = "#ffd000";
+async function verificarAdmin() {
 
-    window.open(
-        "https://dashboard.minehut.com/",
-        "_blank"
-    );
+    const password =
+        document.getElementById("password").value;
 
-    setTimeout(() => {
-        boton.disabled = false;
-        boton.innerHTML = "🚀 ACTIVAR SERVIDOR";
-    }, 3000);
+    const mensaje =
+        document.getElementById("mensaje");
+
+    if (!password) {
+        mensaje.innerHTML = "❌ Escribe la contraseña.";
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/api/admin", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                password: password
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+
+            cerrarAdmin();
+
+            mensaje.innerHTML =
+                "✅ Acceso autorizado.";
+
+            setTimeout(() => {
+                window.open(
+                    data.dashboard,
+                    "_blank"
+                );
+            }, 500);
+
+        } else {
+
+            mensaje.innerHTML =
+                "❌ " + (data.error || "Contraseña incorrecta.");
+
+        }
+
+    } catch (error) {
+
+        mensaje.innerHTML =
+            "❌ No se pudo conectar con BRANDLAND.";
+
+    }
 }
 
 async function copiar(texto) {
+
     try {
+
         await navigator.clipboard.writeText(texto);
 
-        const mensaje = document.getElementById("mensaje");
-        mensaje.innerHTML = "✅ Dirección copiada: " + texto;
+        const mensaje =
+            document.getElementById("mensaje");
+
+        mensaje.innerHTML =
+            "✅ Dirección copiada.";
 
         setTimeout(() => {
             mensaje.innerHTML = "";
         }, 2500);
 
     } catch (error) {
-        alert("No se pudo copiar. Dirección: " + texto);
+
+        alert(
+            "No se pudo copiar. Dirección: " + texto
+        );
+
     }
 }
 
